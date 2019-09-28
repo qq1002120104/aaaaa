@@ -4,8 +4,9 @@ export PATH
 #=======================================================================#
 #   System Supported:  CentOS 6+ / Debian 7+ / Ubuntu 12+               #
 #   Description: L2TP VPN Auto Installer                                #
+#   Author: Teddysun <i@teddysun.com>                                   #
+#   Intro:  https://teddysun.com/844.html                               #
 #=======================================================================#
-
 cur_dir=`pwd`
 
 libreswan_filename="libreswan-3.27"
@@ -13,14 +14,14 @@ download_root_url="https://dl.lamp.sh/files"
 
 rootness(){
     if [[ $EUID -ne 0 ]]; then
-       echo "错误：此脚本必须以超级用户身份运行!" 1>&2
+       echo "Error:This script must be run as root!" 1>&2
        exit 1
     fi
 }
 
 tunavailable(){
     if [[ ! -e /dev/net/tun ]]; then
-        echo "错误：TUN / TAP不可用!" 1>&2
+        echo "Error:TUN/TAP is not available!" 1>&2
         exit 1
     fi
 }
@@ -55,20 +56,20 @@ get_os_info(){
     local host=$( hostname )
     local kern=$( uname -r )
 
-    echo "################ 系统信息 ###############"
+    echo "########## System Information ##########"
     echo 
-    echo "CPU型号              : ${cname}"
-    echo "CPU核心数            : ${cores}"
-    echo "CPU频率              : ${freq} MHz"
-    echo "总内存               : ${tram} MB"
-    echo "未使用内存           : ${swap} MB"
-    echo "系统正常运行时间      : ${up}"
-    echo "平均负载              : ${load}"
+    echo "CPU model            : ${cname}"
+    echo "Number of cores      : ${cores}"
+    echo "CPU frequency        : ${freq} MHz"
+    echo "Total amount of ram  : ${tram} MB"
+    echo "Total amount of swap : ${swap} MB"
+    echo "System uptime        : ${up}"
+    echo "Load average         : ${load}"
     echo "OS                   : ${opsy}"
     echo "Arch                 : ${arch} (${lbit} Bit)"
-    echo "核心                 : ${kern}"
-    echo "主机名               : ${host}"
-    echo "IPv4 地址            : ${IP}"
+    echo "Kernel               : ${kern}"
+    echo "Hostname             : ${host}"
+    echo "IPv4 address         : ${IP}"
     echo 
     echo "########################################"
 }
@@ -140,9 +141,9 @@ download_file(){
     if [ -s ${1} ]; then
         echo "$1 [found]"
     else
-        echo "$1 找不到！！立即下载..."
+        echo "$1 not found!!!download now..."
         if ! wget -c -t3 -T60 ${download_root_url}/${1}; then
-            echo "下载失败 $1, 请下载到 ${cur_dir} 手动目录，然后重试."
+            echo "Failed to download $1, please download it to ${cur_dir} directory manually and try again."
             exit 1
         fi
     fi
@@ -189,7 +190,7 @@ debianversion(){
 version_check(){
     if check_sys packageManager yum; then
         if centosversion 5; then
-            echo "错误：不支持CentOS 5，请重新安装OS，然后重试."
+            echo "Error: CentOS 5 is not supported, Please re-install OS and try again."
             exit 1
         fi
     fi
@@ -209,43 +210,42 @@ preinstall_l2tp(){
 
     echo
     if [ -d "/proc/vz" ]; then
-        echo -e "\033[41;37m 警告: \033[0m您的VPS基于OpenVZ, 内核可能不支持IPSec."
-        echo "继续安装? (y/n)"
-        read -p "(默认: n)" agree
+        echo -e "\033[41;37m WARNING: \033[0m Your VPS is based on OpenVZ, and IPSec might not be supported by the kernel."
+        echo "Continue installation? (y/n)"
+        read -p "(Default: n)" agree
         [ -z ${agree} ] && agree="n"
         if [ "${agree}" == "n" ]; then
             echo
-            echo "L2TP安装已取消."
+            echo "L2TP installation cancelled."
             echo
             exit 0
         fi
     fi
-    echo "#############以下信息可直接回车使用默认设置#############"
     echo
-    echo "请输入IP范围:"
-    read -p "(默认范围: 192.168.18):" iprange
+    echo "Please enter IP-Range:"
+    read -p "(Default Range: 192.168.18):" iprange
     [ -z ${iprange} ] && iprange="192.168.18"
 
-    echo "请输入PSK(共享密钥):"
-    read -p "(默认PSK(共享密钥): root):" mypsk
-    [ -z ${mypsk} ] && mypsk="root"
+    echo "Please enter PSK:"
+    read -p "(Default PSK: teddysun.com):" mypsk
+    [ -z ${mypsk} ] && mypsk="teddysun.com"
 
-    echo "请输入用户名:"
-    read -p "(默认用户名: vpn):" username
-    [ -z ${username} ] && username="vpn"
+    echo "Please enter Username:"
+    read -p "(Default Username: teddysun):" username
+    [ -z ${username} ] && username="teddysun"
 
     password=`rand`
-    echo "请输入 ${username}'s 密码:"
-    read -p "(默认密码: ${password}):" tmppassword
+    echo "Please enter ${username}'s password:"
+    read -p "(Default Password: ${password}):" tmppassword
     [ ! -z ${tmppassword} ] && password=${tmppassword}
 
     echo
-    echo "服务器IP:${IP}"
-    echo "服务器本地IP:${iprange}.1"
-    echo "客户端远程IP范围:${iprange}.2-${iprange}.254"
-    echo "共享密钥:${mypsk}"
+    echo "ServerIP:${IP}"
+    echo "Server Local IP:${iprange}.1"
+    echo "Client Remote IP Range:${iprange}.2-${iprange}.254"
+    echo "PSK:${mypsk}"
     echo
-    echo "按任意键开始... 或按Ctrl + C取消."
+    echo "Press any key to start... or press Ctrl + C to cancel."
     char=`get_char`
 
 }
@@ -306,11 +306,11 @@ install_l2tp(){
 
         compile_install
     elif check_sys packageManager yum; then
-        echo "添加EPEL存储库..."
+        echo "Adding the EPEL repository..."
         yum -y install epel-release yum-utils
-        [ ! -f /etc/yum.repos.d/epel.repo ] && echo "安装EPEL储存库失败，请检查一下." && exit 1
+        [ ! -f /etc/yum.repos.d/epel.repo ] && echo "Install EPEL repository failed, please check it." && exit 1
         yum-config-manager --enable epel
-        echo "EPEP存储库添加完成..."
+        echo "Adding the EPEL repository complete..."
 
         if centosversion 7; then
             yum -y install ppp libreswan xl2tpd firewalld
@@ -604,28 +604,28 @@ EOF
     systemctl status firewalld > /dev/null 2>&1
     if [ $? -eq 0 ]; then
         firewall-cmd --reload
-        echo "检查防火墙状态..."
+        echo "Checking firewalld status..."
         firewall-cmd --list-all
-        echo "添加防火墙规则..."
+        echo "add firewalld rules..."
         firewall-cmd --permanent --add-service=ipsec
         firewall-cmd --permanent --add-service=xl2tpd
         firewall-cmd --permanent --add-masquerade
         firewall-cmd --reload
     else
-        echo "防火墙似乎没有运行, 尝试运行..."
+        echo "Firewalld looks like not running, trying to start..."
         systemctl start firewalld
         if [ $? -eq 0 ]; then
-            echo "防火墙启动成功..."
+            echo "Firewalld start successfully..."
             firewall-cmd --reload
-            echo "检查防火墙状态..."
+            echo "Checking firewalld status..."
             firewall-cmd --list-all
-            echo "添加防火墙规则..."
+            echo "adding firewalld rules..."
             firewall-cmd --permanent --add-service=ipsec
             firewall-cmd --permanent --add-service=xl2tpd
             firewall-cmd --permanent --add-masquerade
             firewall-cmd --reload
         else
-            echo "无法启动firewalld. 请手动启用udp端口500 4500 1701."
+            echo "Failed to start firewalld. please enable udp port 500 4500 1701 manually if necessary."
         fi
     fi
 
@@ -647,28 +647,31 @@ finally(){
     # create l2tp command
     cp -f ${cur_dir}/`basename $0` /usr/bin/l2tp
 
-    echo "请稍等片刻..."
+    echo "Please wait a moment..."
     sleep 5
     ipsec verify
     echo
     echo "###############################################################"
-    echo "# L2TP VPN自动安装程序                                         #"
-    echo "# 支持的系统: CentOS 6+ / Debian 7+ / Ubuntu 12+               #"
+    echo "# L2TP VPN Auto Installer                                     #"
+    echo "# System Supported: CentOS 6+ / Debian 7+ / Ubuntu 12+        #"
+    echo "# Intro: https://teddysun.com/448.html                        #"
+    echo "# Author: Teddysun <i@teddysun.com>                           #"
     echo "###############################################################"
-    echo "如果没有[FAILED]，则可以连接到L2TP"
-    echo "默认用户名/密码的VPN服务器如下："
+    echo "If there is no [FAILED] above, you can connect to your L2TP "
+    echo "VPN Server with the default Username/Password is below:"
     echo
-    echo "连接地址  : ${IP}"
-    echo "共享密钥  : ${mypsk}"
-    echo "连接用户  : ${username}"
-    echo "连接密码  : ${password}"
+    echo "Server IP: ${IP}"
+    echo "PSK      : ${mypsk}"
+    echo "Username : ${username}"
+    echo "Password : ${password}"
     echo
-    echo "如果要修改用户设置，请使用以下命令："
-    echo "l2tp -a (新增用户)"
-    echo "l2tp -d (删除用户)"
-    echo "l2tp -l (查看所有用户)"
-    echo "l2tp -m (修改用户密码)"
+    echo "If you want to modify user settings, please use below command(s):"
+    echo "l2tp -a (Add a user)"
+    echo "l2tp -d (Delete a user)"
+    echo "l2tp -l (List all users)"
+    echo "l2tp -m (Modify a user password)"
     echo
+    echo "Welcome to visit our website: https://teddysun.com/448.html"
     echo "Enjoy it!"
     echo
 }
@@ -677,6 +680,11 @@ finally(){
 l2tp(){
     clear
     echo
+    echo "###############################################################"
+    echo "# L2TP VPN Auto Installer                                     #"
+    echo "# System Supported: CentOS 6+ / Debian 7+ / Ubuntu 12+        #"
+    echo "# Intro: https://teddysun.com/448.html                        #"
+    echo "# Author: Teddysun <i@teddysun.com>                           #"
     echo "###############################################################"
     echo
     rootness
@@ -704,67 +712,67 @@ list_users(){
 add_user(){
     while :
     do
-        read -p "请输入您的用户名:" user
+        read -p "Please input your Username:" user
         if [ -z ${user} ]; then
-            echo "用户名不能为空"
+            echo "Username can not be empty"
         else
             grep -w "${user}" /etc/ppp/chap-secrets > /dev/null 2>&1
             if [ $? -eq 0 ];then
-                echo "用户名 (${user}) 已存在.请重新输入您的用户名."
+                echo "Username (${user}) already exists. Please re-enter your username."
             else
                 break
             fi
         fi
     done
     pass=`rand`
-    echo "请输入 ${user}'s 密码:"
-    read -p "(默认密码: ${pass}):" tmppass
+    echo "Please input ${user}'s password:"
+    read -p "(Default Password: ${pass}):" tmppass
     [ ! -z ${tmppass} ] && pass=${tmppass}
     echo "${user}    l2tpd    ${pass}       *" >> /etc/ppp/chap-secrets
-    echo "用户 (${user}) 添加完成."
+    echo "Username (${user}) add completed."
 }
 
 del_user(){
     while :
     do
-        read -p "请输入您要删除的用户名:" user
+        read -p "Please input Username you want to delete it:" user
         if [ -z ${user} ]; then
-            echo "用户名不能为空"
+            echo "Username can not be empty"
         else
             grep -w "${user}" /etc/ppp/chap-secrets >/dev/null 2>&1
             if [ $? -eq 0 ];then
                 break
             else
-                echo "用户 (${user}) 不存在. 请重新输入您的用户名."
+                echo "Username (${user}) is not exists. Please re-enter your username."
             fi
         fi
     done
     sed -i "/^\<${user}\>/d" /etc/ppp/chap-secrets
-    echo "用户 (${user}) 删除完成."
+    echo "Username (${user}) delete completed."
 }
 
 mod_user(){
     while :
     do
-        read -p "请输入您要更改密码的用户名:" user
+        read -p "Please input Username you want to change password:" user
         if [ -z ${user} ]; then
-            echo "用户名不能为空"
+            echo "Username can not be empty"
         else
             grep -w "${user}" /etc/ppp/chap-secrets >/dev/null 2>&1
             if [ $? -eq 0 ];then
                 break
             else
-                echo "用户 (${user}) 不存在. 请重新输入您的用户名."
+                echo "Username (${user}) is not exists. Please re-enter your username."
             fi
         fi
     done
     pass=`rand`
-    echo "请输入 ${user}'s 新的密码:"
-    read -p "(默认密码: ${pass}):" tmppass
+    echo "Please input ${user}'s new password:"
+    read -p "(Default Password: ${pass}):" tmppass
     [ ! -z ${tmppass} ] && pass=${tmppass}
     sed -i "/^\<${user}\>/d" /etc/ppp/chap-secrets
     echo "${user}    l2tpd    ${pass}       *" >> /etc/ppp/chap-secrets
-    echo "用户 ${user}'s 密码已被更改."
+    echo "Username ${user}'s password has been changed."
 }
 
 # Main process
@@ -790,11 +798,11 @@ case ${action} in
         mod_user
         ;;
     -h|--help)
-        echo "Usage: `basename $0` -l,--list   查看所有用户"
-        echo "       `basename $0` -a,--add    新增用户"
-        echo "       `basename $0` -d,--del    删除用户"
-        echo "       `basename $0` -m,--mod    修改用户密码"
-        echo "       `basename $0` -h,--help   帮助信息"
+        echo "Usage: `basename $0` -l,--list   List all users"
+        echo "       `basename $0` -a,--add    Add a user"
+        echo "       `basename $0` -d,--del    Delete a user"
+        echo "       `basename $0` -m,--mod    Modify a user password"
+        echo "       `basename $0` -h,--help   Print this help information"
         ;;
     *)
         echo "Usage: `basename $0` [-l,--list|-a,--add|-d,--del|-m,--mod|-h,--help]" && exit
